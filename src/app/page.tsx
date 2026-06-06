@@ -13,7 +13,7 @@ import HistorySidebar from '@/components/HistorySidebar'
 import ArgumentSuggestions from '@/components/ArgumentSuggestions'
 import { Tone, VerdictResult, HistoryItem, TONES } from '@/lib/types'
 import { Mode, DebateResult } from '@/lib/modes'
-import { saveVerdict, fetchHistory } from '@/lib/history'
+import { saveVerdict, saveDebate, fetchHistory } from '@/lib/history'
 import { getScoreContext } from '@/lib/scoreContext'
 import { useAuth } from '@/components/AuthProvider'
 
@@ -45,6 +45,7 @@ export default function Home() {
 
   // Load history on mount (and when user changes)
   useEffect(() => {
+    setHistoryLoading(true)
     fetchHistory(10, user?.id).then(items => {
       setHistory(items)
       setHistoryLoading(false)
@@ -82,14 +83,16 @@ export default function Home() {
         setRateLimitReset(null)
 
         if (data.type === 'debate') {
-          setDebate(data.data as DebateResult)
+          const d = data.data as DebateResult
+          setDebate(d)
+          await saveDebate(finalArg, d, user?.id)
         } else {
           const v = data.data as VerdictResult
           setVerdict(v)
           await saveVerdict(finalArg, v, user?.id)
-          const updated = await fetchHistory(10, user?.id)
-          setHistory(updated)
         }
+        const updated = await fetchHistory(10, user?.id)
+        setHistory(updated)
 
         setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
       }
@@ -109,10 +112,25 @@ export default function Home() {
 
   const handleHistorySelect = (item: HistoryItem) => {
     setArgument(item.argument)
-    setVerdict(item.verdict)
-    setDebate(null)
     setTone(item.verdict.tone)
     setSidebarOpen(false)
+
+    if (item.verdict.debateTurns) {
+      setDebate({
+        topic:             item.argument,
+        turns:             item.verdict.debateTurns,
+        ruling:            item.verdict.ruling,
+        score:             item.verdict.score,
+        tone:              item.verdict.tone,
+        searchedAt:        item.verdict.searchedAt,
+        hasResearchPapers: item.verdict.hasResearchPapers,
+      })
+      setVerdict(null)
+    } else {
+      setVerdict(item.verdict)
+      setDebate(null)
+    }
+
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 

@@ -25,6 +25,7 @@ export default function HistorySidebar({ open, onClose, items, loading, onSelect
   const sidebarRef                        = useRef<HTMLDivElement>(null)
   const [deletingId, setDeletingId]       = useState<string | null>(null)
   const [confirmId, setConfirmId]         = useState<string | null>(null)
+  const confirmTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Close on outside click
   useEffect(() => {
@@ -49,10 +50,13 @@ export default function HistorySidebar({ open, onClose, items, loading, onSelect
     return () => document.removeEventListener('keydown', handler)
   }, [onClose, confirmId])
 
-  // Lock body scroll when open
+  // Lock body scroll when open; clean up confirm timer on unmount
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+    }
   }, [open])
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -62,7 +66,11 @@ export default function HistorySidebar({ open, onClose, items, loading, onSelect
     if (confirmId !== id) {
       setConfirmId(id)
       // Auto-cancel confirm after 3s
-      setTimeout(() => setConfirmId(prev => prev === id ? null : prev), 3000)
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+      confirmTimerRef.current = setTimeout(() => {
+        setConfirmId(prev => prev === id ? null : prev)
+        confirmTimerRef.current = null
+      }, 3000)
       return
     }
 
@@ -206,10 +214,10 @@ export default function HistorySidebar({ open, onClose, items, loading, onSelect
                 const isConfirm   = confirmId  === item.id
 
                 return (
-                  <div
-                    key={item.id}
-                    onClick={() => { onSelect(item); onClose() }}
-                    style={{
+                    <div
+                      key={item.id}
+                      onClick={() => onSelect(item)}
+                      style={{
                       background: 'var(--charcoal-3)',
                       border: `1px solid ${isConfirm ? 'rgba(232,37,26,0.5)' : 'rgba(255,255,255,0.05)'}`,
                       borderRadius: 18, padding: '14px 16px',

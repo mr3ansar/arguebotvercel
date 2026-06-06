@@ -33,6 +33,13 @@ export interface EvidenceItem {
   year?: string         // for papers: "2023"
 }
 
+export interface DebateTurn {
+  role:    'advocate' | 'skeptic' | 'judge'
+  label:   string
+  emoji:   string
+  content: string
+}
+
 export interface VerdictResult {
   ruling: Ruling
   score: number
@@ -42,6 +49,7 @@ export interface VerdictResult {
   tone: Tone
   searchedAt: string
   hasResearchPapers?: boolean
+  debateTurns?: DebateTurn[]
 }
 
 export interface HistoryItem {
